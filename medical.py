@@ -7,10 +7,15 @@ from dotenv import load_dotenv
 from PIL import Image as PILImage
 
 
-# Load .env for local development. Streamlit Cloud uses st.secrets.
-load_dotenv()
+load_dotenv(override=True)
 
-GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+if not GOOGLE_API_KEY:
+    try:
+        GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY")
+    except Exception:
+        GOOGLE_API_KEY = None
 
 if not GOOGLE_API_KEY:
     st.error("GOOGLE_API_KEY not found. Add it to Streamlit secrets or your local .env file.")
