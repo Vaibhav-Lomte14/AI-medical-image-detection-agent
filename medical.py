@@ -1,19 +1,19 @@
 import os
 import time
+
 import google.generativeai as genai
-from PIL import Image as PILImage
 import streamlit as st
 from dotenv import load_dotenv
+from PIL import Image as PILImage
 
-# Load .env file
+
+# Load .env for local development. Streamlit Cloud uses st.secrets.
 load_dotenv()
 
-# Get API key from environment
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
 
-# Check API key
 if not GOOGLE_API_KEY:
-    st.error("❌ GOOGLE_API_KEY not found. Please add it to your .env file.")
+    st.error("GOOGLE_API_KEY not found. Add it to Streamlit secrets or your local .env file.")
     st.stop()
 
 GEMINI_MODEL_IDS = [
@@ -23,7 +23,7 @@ GEMINI_MODEL_IDS = [
 ]
 
 genai.configure(api_key=GOOGLE_API_KEY)
-# Medical Analysis Prompt
+
 query = """
 You are a highly skilled medical imaging expert with extensive knowledge in radiology and diagnostic imaging.
 
@@ -55,13 +55,10 @@ Analyze the medical image and structure your response as follows:
 Use proper markdown formatting.
 """
 
-# Function to analyze image
-def analyze_medical_image(image_path):
 
-    # Open image
+def analyze_medical_image(image_path):
     image = PILImage.open(image_path)
 
-    # Resize image
     width, height = image.size
     aspect_ratio = width / height
 
@@ -72,7 +69,6 @@ def analyze_medical_image(image_path):
     if resized_image.mode != "RGB":
         resized_image = resized_image.convert("RGB")
 
-    # Save temporary resized image
     temp_path = "temp_resized_image.png"
     resized_image.save(temp_path)
 
@@ -125,22 +121,21 @@ def analyze_medical_image(image_path):
                 "Wait 2-5 minutes, then click Analyze Image again. If it keeps happening, try a new API key/project or enable billing.\n"
             )
         return f"Analysis Error: {error_message}"
-        return f"⚠️ Analysis Error: {str(e)}"
 
     finally:
-        # Remove temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-# Streamlit UI
+
 st.set_page_config(
     page_title="Medical Image Analysis",
-    layout="centered"
+    layout="centered",
 )
 
-st.title("🩺 Medical Image Analysis Tool 🔬")
+st.title("Medical Image Analysis Tool")
 
-st.markdown("""
+st.markdown(
+    """
 Upload a medical image like:
 - X-ray
 - MRI
@@ -148,47 +143,38 @@ Upload a medical image like:
 - Ultrasound
 
 The AI system will analyze the image and generate a detailed report.
-""")
+"""
+)
 
-# Sidebar upload
 st.sidebar.header("Upload Medical Image")
 
 uploaded_file = st.sidebar.file_uploader(
     "Choose Image",
-    type=["jpg", "jpeg", "png", "bmp"]
+    type=["jpg", "jpeg", "png", "bmp"],
 )
 
 if uploaded_file is not None:
-
-    # Show uploaded image
     st.image(
         uploaded_file,
         caption="Uploaded Image",
-        use_container_width=True
+        use_container_width=True,
     )
 
-    # Analyze button
     if st.sidebar.button("Analyze Image"):
-
-        with st.spinner("🔍 Analyzing image..."):
-
-            # Save uploaded file
+        with st.spinner("Analyzing image..."):
             file_extension = uploaded_file.name.split(".")[-1]
             image_path = f"temp_image.{file_extension}"
 
             with open(image_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
-            # Analyze
             report = analyze_medical_image(image_path)
 
-            # Display report
-            st.subheader("📋 Analysis Report")
+            st.subheader("Analysis Report")
             st.markdown(report)
 
-            # Cleanup
             if os.path.exists(image_path):
                 os.remove(image_path)
 
 else:
-    st.warning("⚠️ Please upload a medical image.")
+    st.warning("Please upload a medical image.")
